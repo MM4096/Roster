@@ -1,5 +1,6 @@
 let shiftTimes = []
 let people = []
+let roles = []
 
 class Cell {
     constructor(row, column, value) {
@@ -17,13 +18,39 @@ function clearTable() {
     $("#table").empty();
 }
 
+function formatTime(time) {
+    let hours = parseInt(time[0]);
+    let minutes = parseInt(time[1]);
+    let ampm = "AM";
+
+    if (hours > 12) {
+        ampm = "PM";
+        hours -= 12;
+    }
+
+    if (hours < 10) {
+        hours = "0" + hours;
+    }
+    if (minutes < 10) {
+        minutes = "0" + minutes
+    }
+
+    return hours + ":" + minutes + " " + ampm;
+}
+
 function addRow(data, isHeader=false, rowIndex=0) {
 
     let row = ""
     let tag = isHeader ? "th" : "td";
+    let extra = rowIndex !== 0 ? "class='hover'" : "";
 
     data.forEach((element, index) => {
-        row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})'>` + element + "</" + tag + ">";
+        if (index === 0) {
+            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})'>` + element + "</" + tag + ">";
+        }
+        else {
+            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})' ${extra}>` + element + "</" + tag + ">";
+        }
     })
 
     $("#table").append("<tr>" + row + "</tr>");
@@ -44,11 +71,17 @@ function drawTable() {
     people.forEach((person) => {
         header.push(person);
     })
-    header.push('<button id="addPerson">Add a person</button>')
     data.push(header);
 
-    shiftTimes.forEach((time) => {
-        let row = [time];
+    shiftTimes.forEach((time, index) => {
+
+        if (index === shiftTimes.length - 1) {
+            return;
+        }
+
+        let formattedTime = formatTime(time.split(":")) + " - " + formatTime(shiftTimes[shiftTimes.indexOf(time) + 1].split(":"));
+
+        let row = [formattedTime];
         people.forEach((person) => {
             row.push(" ");
         })
@@ -58,7 +91,22 @@ function drawTable() {
     addTable(data);
 }
 
-$("#update").on("click", function() {
+function UpdatePeopleList() {
+    $("#personList").empty();
+    people.forEach((person) => {
+        $("#personList").append("<li>" + person + " <button class='removePerson'>Remove</button></li>");
+    });
+}
+
+function UpdateRolesList() {
+    // TODO: Needs fixing
+    $("#roleList").empty();
+    roles.forEach((role) => {
+        $("#roleList").append(`<li>Role: ${role[0]}, Manatory: ${role[1]}, People: ${role[2]}-${role[3]} <button class='removeRole'>Remove</button></li>`);
+    });
+}
+
+$("#updateTimes").on("click", function() {
     let startTime = $("#startTime").val();
     let endTime = $("#endTime").val();
     let shiftTime = $("#shiftTime").val();
@@ -70,7 +118,6 @@ $("#update").on("click", function() {
     shiftTime = parseInt(shiftTime);
     let currentTime = [startTime[0], startTime[1]];
     let times = [];
-
     times.push(currentTime.join(":"));
 
     while (currentTime[0] < endTime[0] || (currentTime[0] === endTime[0] && currentTime[1] < endTime[1])) {
@@ -81,10 +128,10 @@ $("#update").on("click", function() {
         }
         times.push(currentTime.join(":"));
     }
-
-    console.log(times)
     shiftTimes = times;
     drawTable();
+    $("#firstPage").hide();
+    $("#secondPage").show();
 })
 
 $("#table").on("click", "#addPerson", function() {
@@ -93,20 +140,62 @@ $("#table").on("click", "#addPerson", function() {
     drawTable();
 })
 
+$("#addPerson").on("click", function() {
+    let name = $("#people").val();
+    people.push(name);
+    UpdatePeopleList();
+    $("#updatedPeople").removeAttr("disabled");
+})
+
+$("#personList").on("click", ".removePerson", function() {
+    let index = $(this).parent().index();
+    people.splice(index, 1);
+    UpdatePeopleList();
+    drawTable();
+    if (people.length === 0) {
+        $("#updatedPeople").attr("disabled", true);
+        $("#personList").append("<li>Add a person to get started</li>")
+    }
+})
+
+$("#updatedPeople").on("click", function() {
+    drawTable();
+    $("#secondPage").hide();
+    $("#thirdPage").show();
+    $("#table").show();
+})
+
+$("#roles").on("click", function() {
+    $("#thirdPage").hide();
+    $("#fourthPage").show();
+    $("#table").hide();
+})
+
+$("#addRole").on("click", function() {
+    let role = $("#role").val();
+    let roleType = $("#type").find(":selected").attr("value");
+    let roleIsMandatory = roleType === "mandatory";
+    let minPeople = parseInt($("#minPeople").val());
+    let maxPeople = parseInt($("#maxPeople").val());
+
+    roles.push({role, roleIsMandatory, minPeople, maxPeople});
+    UpdateRolesList();
+})
+
 function cellClicked(rowIndex, colIndex) {
-    if (rowIndex === 0 && colIndex !== 0 && colIndex !== people.length + 1) {
-        let name = prompt("Enter a name\nLeave blank to remove person");
-        if (name === "") {
-            people.splice(colIndex - 1, 1);
-            drawTable();
+    if (rowIndex > 0 && colIndex > 0) {
+        let data = prompt("Enter data\nLeave blank to remove data");
+
+        if (data === "") {
+            data = " ";
+        }
+        if (!data) {
             return;
         }
-        people[colIndex - 1] = name;
-        drawTable();
-    }
-    else if (rowIndex > 0 && colIndex > 0) {
-        // TODO: needs fixing
-        let data = prompt("Enter data\nLeave blank to remove data");
-        $("#table").eq(rowIndex).eq(colIndex).text(data);
+
+        let table = $("#table")[0];
+        let cell = table.rows[rowIndex].cells[colIndex]; // This is a DOM "TD" element
+        cell = $(cell); // Now it's a jQuery object.
+        cell.text(data);
     }
 }

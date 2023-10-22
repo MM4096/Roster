@@ -4,3 +4,32 @@ table, th, td {
     padding: 5px;
     text-align: center;
 }
+
+th, td {
+    min-width: 50px;
+}
+
+button {
+    background-color: #ffffff;
+    border: 1px solid black;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+button:hover {
+    background-color: #cccccc;
+}
+
+button:disabled {
+    background-color: #eeeeee;
+}
+
+input {
+    padding: 5px;
+    margin-bottom: 10px;
+    background-color: #ffffff;
+}
+
+.hover:hover {
+    background-color: #eeeeee;
+}
