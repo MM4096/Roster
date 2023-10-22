@@ -89,6 +89,7 @@ function drawTable() {
     })
 
     addTable(data);
+
 }
 
 function UpdatePeopleList() {
