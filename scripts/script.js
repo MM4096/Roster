@@ -46,19 +46,36 @@ function addRow(data, isHeader=false, rowIndex=0) {
 
     data.forEach((element, index) => {
         if (index === 0) {
-            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})'>` + element + "</" + tag + ">";
+            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})' id='${rowIndex},${index}'>` + element + "</" + tag + ">";
         }
         else {
-            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})' ${extra}>` + element + "</" + tag + ">";
+            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})' id='${rowIndex},${index}' ${extra}>` + element + "</" + tag + ">";
         }
     })
 
     $("#table").append("<tr>" + row + "</tr>");
 }
 
-function addTable(data) {
-    // data should be 2D array
-    let table = $("#table");
+function addTable(data, addHeaderAndTime=false) {
+    clearTable();
+    if (addHeaderAndTime) {
+        let header = ["Time"];
+        people.forEach((person) => {
+            header.push(person);
+        })
+        data.unshift(header);
+        addRow(header, true)
+        console.log(data)
+        data.forEach((row, index) => {
+            if (index !== 0) {
+                let formattedTime = formatTime(shiftTimes[index - 1].split(":")) + " - " + formatTime(shiftTimes[index].split(":"));
+                row.unshift(formattedTime);
+                addRow(row, false, index - 1);
+            }
+        })
+        return;
+    }
+
     data.forEach((row, index) => {
         addRow(row, index === 0, index);
     })
@@ -100,7 +117,6 @@ function UpdatePeopleList() {
 }
 
 function UpdateRolesList() {
-    // TODO: Needs fixing
     $("#roleList").empty();
     roles.forEach((role) => {
         $("#roleList").append(`<li>Role: ${role[0]}, Manatory: ${role[1]}, People: ${role[2]}-${role[3]} <button class='removeRole'>Remove</button></li>`);
@@ -172,6 +188,16 @@ $("#roles").on("click", function() {
     $("#table").hide();
 })
 
+$("#roleList").on("click", ".removeRole", function() {
+    let index = $(this).parent().index();
+    roles.splice(index, 1);
+    UpdateRolesList();
+    if (roles.length === 0) {
+        $("#roleList").append("<li>Add a role to get started</li>")
+        $("#generate").attr("disabled", true);
+    }
+})
+
 $("#addRole").on("click", function() {
     let role = $("#role").val();
     let roleType = $("#type").find(":selected").attr("value");
@@ -179,9 +205,98 @@ $("#addRole").on("click", function() {
     let minPeople = parseInt($("#minPeople").val());
     let maxPeople = parseInt($("#maxPeople").val());
 
-    roles.push({role, roleIsMandatory, minPeople, maxPeople});
+    let array = [role, roleIsMandatory, minPeople, maxPeople];
+
+    roles.push(array);
     UpdateRolesList();
+    $("#generate").removeAttr("disabled");
 })
+
+
+$("#generate").on("click", function() {
+    // generate 2D array
+    // let data = [];
+    //
+    // for (let i = 0; i < shiftTimes.length - 1; i++) {
+    //     let row = [];
+    //     for (let j = 0; j < people.length; j++) {
+    //         row.push(" ");
+    //     }
+    //     data.push(row);
+    // }
+    //
+    // console.log(data)
+
+    let tableData = [];
+    $("#table tr").each(function() {
+        let rowData = [];
+        $(this).find("td").each(function() {
+            rowData.push($(this).text());
+        });
+        tableData.push(rowData);
+    });
+
+    // Remove the first row (header)
+    tableData.shift();
+
+    // Remove the first column from each row
+    for (let i = 0; i < tableData.length; i++) {
+        tableData[i].shift();
+    }
+
+    // get required roles
+    let requiredRoles = [];
+    let optionalRoles = [];
+    roles.forEach((role) => {
+        if (role[1]) {
+            requiredRoles.push(role);
+        }
+        else {
+            optionalRoles.push(role);
+        }
+    })
+
+    // assign roles according to requirements
+    tableData.forEach((row, index) => {
+        let notAssigned = people.slice();
+        let tempRequiredRoles = requiredRoles.slice();
+        let tempOptionalRoles = optionalRoles.slice();
+
+        for (let column = 0; column < row.length; column++) {
+            let task = row[column];
+            console.log(task)
+            if (task !== " ") {
+                notAssigned.splice(notAssigned.indexOf(task), 1);
+            }
+        }
+        // TODO: here
+
+        tempRequiredRoles.forEach((role) => {
+            let min = role[2];
+            let max = role[3];
+            let peopleAssigned = 0;
+            let peopleToAssign = Math.floor(Math.random() * (max - min + 1) + min);
+
+            while (peopleAssigned < peopleToAssign) {
+                let personIndex = Math.floor(Math.random() * notAssigned.length);
+                let person = notAssigned[personIndex];
+                notAssigned.splice(personIndex, 1);
+                tableData[index][people.indexOf(person)] = role[0];
+                peopleAssigned++;
+            }
+        })
+
+        tempOptionalRoles.forEach((role) => {
+
+        })
+
+    })
+
+    clearTable()
+    addTable(tableData, true);
+    $("#table").show()
+})
+
 
 function cellClicked(rowIndex, colIndex) {
     if (rowIndex > 0 && colIndex > 0) {
