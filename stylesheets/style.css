@@ -28,6 +28,7 @@ input {
     padding: 5px;
     margin-bottom: 10px;
     background-color: #ffffff;
+    border: 1px solid black;
 }
 
 .hover:hover {

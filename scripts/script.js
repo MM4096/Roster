@@ -2,14 +2,6 @@ let shiftTimes = []
 let people = []
 let roles = []
 
-class Cell {
-    constructor(row, column, value) {
-        this.row = row;
-        this.column = column;
-        this.value = value;
-    }
-}
-
 $(document).ready(function() {
     $("#update").click();
 })
@@ -256,9 +248,12 @@ $("#generate").on("click", function() {
         }
     })
 
+    let notGoneToLunch = people.slice();
+
     // assign roles according to requirements
     tableData.forEach((row, index) => {
-        let notAssigned = people.slice();
+        let canAssign = people.slice();
+        let notAssigned = [];
         let tempRequiredRoles = requiredRoles.slice();
         let tempOptionalRoles = optionalRoles.slice();
 
@@ -266,10 +261,13 @@ $("#generate").on("click", function() {
             let task = row[column];
             console.log(task)
             if (task !== " ") {
-                notAssigned.splice(notAssigned.indexOf(task), 1);
+                let personDoingTask = people[column];
+                canAssign.splice(canAssign.indexOf(personDoingTask), 1);
             }
         }
-        // TODO: here
+        notAssigned = canAssign.slice();
+
+        console.log(notAssigned)
 
         tempRequiredRoles.forEach((role) => {
             let min = role[2];
@@ -278,6 +276,10 @@ $("#generate").on("click", function() {
             let peopleToAssign = Math.floor(Math.random() * (max - min + 1) + min);
 
             while (peopleAssigned < peopleToAssign) {
+                if (notAssigned.length === 0) {
+                    break;
+                }
+
                 let personIndex = Math.floor(Math.random() * notAssigned.length);
                 let person = notAssigned[personIndex];
                 notAssigned.splice(personIndex, 1);
@@ -286,15 +288,69 @@ $("#generate").on("click", function() {
             }
         })
 
-        tempOptionalRoles.forEach((role) => {
+        for (let column = 0; column < row.length; column++) {
+            let task = row[column];
+            console.log(task)
+            if (task !== " ") {
+                let personDoingTask = people[column];
+                canAssign.splice(canAssign.indexOf(personDoingTask), 1);
+            }
+        }
 
+        tempOptionalRoles.forEach((role) => {
+            let min = role[2];
+            let max = role[3];
+            let peopleAssigned = 0;
+            let peopleToAssign = Math.floor(Math.random() * (max - min + 1) + min);
+
+            while (peopleAssigned < peopleToAssign) {
+                if (notAssigned.length === 0) {
+                    break;
+                }
+
+                let personIndex = Math.floor(Math.random() * notAssigned.length);
+                let person = notAssigned[personIndex];
+                notAssigned.splice(personIndex, 1);
+                tableData[index][people.indexOf(person)] = role[0];
+                peopleAssigned++;
+            }
         })
+
+
+        if (parseInt(shiftTimes[index].split(":")[0]) > 11) {
+
+            notAssigned.forEach((person) => {
+                if (notGoneToLunch.includes(person)) {
+                    tableData[index][people.indexOf(person)] = "Lunch";
+                    notGoneToLunch.splice(notGoneToLunch.indexOf(person), 1);
+                }
+            })
+        }
 
     })
 
     clearTable()
     addTable(tableData, true);
+    $("#fourthPage").hide();
+    $("#fifthPage").show();
     $("#table").show()
+})
+
+$("#finish").on("click", function() {
+    $("#fifthPage").hide();
+    $("#firstPage").show();
+    $("#table").hide();
+    $("#startTime").val("");
+    $("#endTime").val("");
+    $("#shiftTime").val("");
+    $("#people").val("");
+    $("#role").val("");
+    $("#minPeople").val("");
+    $("#maxPeople").val("");
+    $("#personList").empty();
+    $("#roleList").empty();
+    $("#generate").attr("disabled", true);
+    $("#updatedPeople").attr("disabled", true);
 })
 
 
