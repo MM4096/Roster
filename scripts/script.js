@@ -282,9 +282,12 @@ $("#generate").on("click", function() {
 
                 let personIndex = Math.floor(Math.random() * notAssigned.length);
                 let person = notAssigned[personIndex];
-                notAssigned.splice(personIndex, 1);
-                tableData[index][people.indexOf(person)] = role[0];
-                peopleAssigned++;
+
+                if (tableData[index][people.indexOf(person)] !== role[0]) {
+                    notAssigned.splice(personIndex, 1);
+                    tableData[index][people.indexOf(person)] = role[0];
+                    peopleAssigned++;
+                }
             }
         })
 
@@ -295,6 +298,17 @@ $("#generate").on("click", function() {
                 let personDoingTask = people[column];
                 canAssign.splice(canAssign.indexOf(personDoingTask), 1);
             }
+        }
+
+        let hour = parseInt(shiftTimes[index].split(":")[0]);
+
+        if (11 < hour < 3) {
+            notAssigned.forEach((person) => {
+                if (notGoneToLunch.includes(person)) {
+                    tableData[index][people.indexOf(person)] = "Lunch";
+                    notGoneToLunch.splice(notGoneToLunch.indexOf(person), 1);
+                }
+            })
         }
 
         tempOptionalRoles.forEach((role) => {
@@ -310,22 +324,14 @@ $("#generate").on("click", function() {
 
                 let personIndex = Math.floor(Math.random() * notAssigned.length);
                 let person = notAssigned[personIndex];
-                notAssigned.splice(personIndex, 1);
-                tableData[index][people.indexOf(person)] = role[0];
-                peopleAssigned++;
+
+                if (tableData[index][people.indexOf(person)] !== role[0]) {
+                    notAssigned.splice(personIndex, 1);
+                    tableData[index][people.indexOf(person)] = role[0];
+                    peopleAssigned++;
+                }
             }
         })
-
-
-        if (parseInt(shiftTimes[index].split(":")[0]) > 11) {
-
-            notAssigned.forEach((person) => {
-                if (notGoneToLunch.includes(person)) {
-                    tableData[index][people.indexOf(person)] = "Lunch";
-                    notGoneToLunch.splice(notGoneToLunch.indexOf(person), 1);
-                }
-            })
-        }
 
     })
 
