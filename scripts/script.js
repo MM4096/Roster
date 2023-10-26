@@ -302,7 +302,7 @@ $("#generate").on("click", function() {
 
         let hour = parseInt(shiftTimes[index].split(":")[0]);
 
-        if (11 < hour < 3) {
+        if (11 < hour < 4) {
             notAssigned.forEach((person) => {
                 if (notGoneToLunch.includes(person)) {
                     tableData[index][people.indexOf(person)] = "Lunch";
