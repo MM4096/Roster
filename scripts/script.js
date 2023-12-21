@@ -57,7 +57,6 @@ function addTable(data, addHeaderAndTime=false) {
         })
         data.unshift(header);
         addRow(header, true)
-        console.log(data)
         data.forEach((row, index) => {
             if (index !== 0) {
                 let formattedTime = formatTime(shiftTimes[index - 1].split(":")) + " - " + formatTime(shiftTimes[index].split(":"));
@@ -103,9 +102,19 @@ function drawTable() {
 
 function UpdatePeopleList() {
     $("#personList").empty();
+    let duplicates = people.filter((e, i, a) => a.indexOf(e) !== i);
     people.forEach((person) => {
-        $("#personList").append("<li>" + person + " <button class='removePerson'>Remove</button></li>");
+        let extras = "";
+        if (duplicates.includes(person)) {
+            extras = "<div class='tooltip'><p class='error'>!</p><span class='tooltiptext'>This matches another person's name!</span></div>";
+        }
+        $("#personList").append("<li>" + person + " <button class='removePerson'>Remove</button>" + extras + "</li>");
     });
+}
+
+function CheckForPeopleDuplicates() {
+    let duplicates = people.filter((e, i, a) => a.indexOf(e) !== i);
+    return duplicates.length > 0;
 }
 
 function UpdateRolesList() {
@@ -168,10 +177,18 @@ $("#personList").on("click", ".removePerson", function() {
 })
 
 $("#updatedPeople").on("click", function() {
-    drawTable();
-    $("#secondPage").hide();
-    $("#thirdPage").show();
-    $("#table").show();
+    if (people.length === 0) {
+        window.alert("You must add at least one person");
+    }
+    else if (CheckForPeopleDuplicates()) {
+        window.alert("You have duplicate names");
+    }
+    else {
+        drawTable()
+        $("#secondPage").hide();
+        $("#thirdPage").show();
+        $("#table").show();
+    }
 })
 
 $("#roles").on("click", function() {
@@ -252,6 +269,8 @@ $("#generate").on("click", function() {
 
     // assign roles according to requirements
     tableData.forEach((row, index) => {
+        let hour = parseInt(shiftTimes[index].split(":")[0]);
+
         let canAssign = people.slice();
         let notAssigned = [];
         let tempRequiredRoles = requiredRoles.slice();
@@ -259,15 +278,12 @@ $("#generate").on("click", function() {
 
         for (let column = 0; column < row.length; column++) {
             let task = row[column];
-            console.log(task)
             if (task !== " ") {
                 let personDoingTask = people[column];
                 canAssign.splice(canAssign.indexOf(personDoingTask), 1);
             }
         }
         notAssigned = canAssign.slice();
-
-        console.log(notAssigned)
 
         tempRequiredRoles.forEach((role) => {
             let min = role[2];
@@ -291,24 +307,36 @@ $("#generate").on("click", function() {
             }
         })
 
+
+        if (11 < hour && hour < 14) {
+            let canAssign = [...new Set([...people, ...notGoneToLunch])];
+            let peopleAssigned = 0;
+            let peopleToAssign = Math.floor(Math.random() * (canAssign.length - 1 + 1) + 1);
+
+            while (peopleAssigned < peopleToAssign) {
+                if (notGoneToLunch.length === 0) {
+                    break;
+                }
+                let personIndex = Math.floor(Math.random() * canAssign.length);
+                let person = canAssign[personIndex];
+
+                let notGoneToLunchIndex = notGoneToLunch.indexOf(person);
+                notGoneToLunch.splice(notGoneToLunchIndex, 1);
+
+                let canAssignIndex = canAssign.indexOf(person);
+                canAssign.splice(canAssignIndex, 1);
+
+                tableData[index][people.indexOf(person)] = "Lunch";
+                peopleAssigned++;
+            }
+        }
+
         for (let column = 0; column < row.length; column++) {
             let task = row[column];
-            console.log(task)
             if (task !== " ") {
                 let personDoingTask = people[column];
                 canAssign.splice(canAssign.indexOf(personDoingTask), 1);
             }
-        }
-
-        let hour = parseInt(shiftTimes[index].split(":")[0]);
-
-        if (11 < hour < 4) {
-            notAssigned.forEach((person) => {
-                if (notGoneToLunch.includes(person)) {
-                    tableData[index][people.indexOf(person)] = "Lunch";
-                    notGoneToLunch.splice(notGoneToLunch.indexOf(person), 1);
-                }
-            })
         }
 
         tempOptionalRoles.forEach((role) => {

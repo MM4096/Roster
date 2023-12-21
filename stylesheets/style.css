@@ -34,3 +34,47 @@ input {
 .hover:hover {
     background-color: #eeeeee;
 }
+
+.error {
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    background-color: red;
+    height: inherit;
+    margin-left: 10px;
+    margin-bottom: 0;
+    margin-top: 0;
+    font-weight: bolder;
+    padding-left: 7px;
+    padding-right: 7px;
+    color: white;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    /*border-bottom: 1px dotted black;*/
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -60px;
+
+    /* Fade in tooltip - takes 1 second to go from 0% to 100% opac: */
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
