@@ -1,407 +1,276 @@
-let shiftTimes = []
-let people = []
-let roles = []
+let times = [];
+let people = [];
+let roles = [];
+let tableData = [];
 
-$(document).ready(function() {
-    $("#update").click();
-})
-
-function clearTable() {
-    $("#table").empty();
-}
-
-function formatTime(time) {
-    let hours = parseInt(time[0]);
-    let minutes = parseInt(time[1]);
-    let ampm = "AM";
-
-    if (hours > 12) {
-        ampm = "PM";
-        hours -= 12;
-    }
-
-    if (hours < 10) {
-        hours = "0" + hours;
-    }
-    if (minutes < 10) {
-        minutes = "0" + minutes
-    }
-
-    return hours + ":" + minutes + " " + ampm;
-}
-
-function addRow(data, isHeader=false, rowIndex=0) {
-
-    let row = ""
-    let tag = isHeader ? "th" : "td";
-    let extra = rowIndex !== 0 ? "class='hover'" : "";
-
-    data.forEach((element, index) => {
-        if (index === 0) {
-            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})' id='${rowIndex},${index}'>` + element + "</" + tag + ">";
+function MakeTableData() {
+    let tableData = [];
+    for (let i = 0; i < times.length; i++) {
+        let row = [];
+        for (let j = 0; j < people.length; j++) {
+            row.push(`<input type='checkbox' id='${i}-${j}'></input>`);
         }
-        else {
-            row += "<" + tag + ` onclick='cellClicked(${rowIndex},${index})' id='${rowIndex},${index}' ${extra}>` + element + "</" + tag + ">";
-        }
-    })
-
-    $("#table").append("<tr>" + row + "</tr>");
-}
-
-function addTable(data, addHeaderAndTime=false) {
-    clearTable();
-    if (addHeaderAndTime) {
-        let header = ["Time"];
-        people.forEach((person) => {
-            header.push(person);
-        })
-        data.unshift(header);
-        addRow(header, true)
-        data.forEach((row, index) => {
-            if (index !== 0) {
-                let formattedTime = formatTime(shiftTimes[index - 1].split(":")) + " - " + formatTime(shiftTimes[index].split(":"));
-                row.unshift(formattedTime);
-                addRow(row, false, index - 1);
-            }
-        })
-        return;
+        tableData.push(row);
     }
-
-    data.forEach((row, index) => {
-        addRow(row, index === 0, index);
-    })
+    return tableData;
 }
 
-function drawTable() {
-    clearTable();
+function GetBusyPeople() {
     let data = [];
-    let header = ["Time"];
-    people.forEach((person) => {
-        header.push(person);
-    })
-    data.push(header);
-
-    shiftTimes.forEach((time, index) => {
-
-        if (index === shiftTimes.length - 1) {
-            return;
+    for (let i = 0; i < times.length; i++) {
+        let row = [];
+        for (let j = 0; j < people.length; j++) {
+            row.push($(`#${i}-${j}`).prop("checked"));
         }
-
-        let formattedTime = formatTime(time.split(":")) + " - " + formatTime(shiftTimes[shiftTimes.indexOf(time) + 1].split(":"));
-
-        let row = [formattedTime];
-        people.forEach((person) => {
-            row.push(" ");
-        })
         data.push(row);
-    })
-
-    addTable(data);
-
+    }
+    return data;
 }
 
-function UpdatePeopleList() {
-    $("#personList").empty();
-    let duplicates = people.filter((e, i, a) => a.indexOf(e) !== i);
-    people.forEach((person) => {
-        let extras = "";
-        if (duplicates.includes(person)) {
-            extras = "<div class='tooltip'><p class='error'>!</p><span class='tooltiptext'>This matches another person's name!</span></div>";
+function DrawTable(tableData) {
+    let table = "<table>";
+    table += "<tr><th></th>";
+    for (let i = 0; i < people.length; i++) {
+        table += `<th>${people[i]}</th>`;
+    }
+    for (let i = 0; i < tableData.length; i++) {
+        table += "<tr>";
+        table += `<td>${ConvertToTime(times[i])}</td>`;
+        for (let j = 0; j < tableData[i].length; j++) {
+            table += `<td id="${i},${j}">${tableData[i][j]}</td>`;
         }
-        $("#personList").append("<li>" + person + " <button class='removePerson'>Remove</button>" + extras + "</li>");
-    });
+        table += "</tr>";
+    }
+    table += "</table>";
+    $("#table").html(table);
 }
 
-function CheckForPeopleDuplicates() {
-    let duplicates = people.filter((e, i, a) => a.indexOf(e) !== i);
-    return duplicates.length > 0;
+function ConvertToTime(minutes) {
+    let hours = Math.floor(minutes / 60);
+    let mins = minutes % 60;
+
+    if (mins < 10) {
+        mins = "0" + mins;
+    }
+
+    return hours + ":" + mins;
+}
+
+function ResetAllCheckboxes() {
+    let result = confirm("Are you sure you want to reset all checkboxes?");
+    if (!result) { return; }
+    for (let i = 0; i < times.length; i++) {
+        for (let j = 0; j < people.length; j++) {
+            $(`#${i}-${j}`).prop("checked", false);
+        }
+    }
+}
+
+function RemovePerson(index) {
+    people.splice(index, 1);
+    UpdatePeopleList();
+}
+
+function RemoveRole(index) {
+    roles.splice(index, 1);
+    UpdateRolesList();
 }
 
 function UpdateRolesList() {
-    $("#roleList").empty();
-    roles.forEach((role) => {
-        $("#roleList").append(`<li>Role: ${role[0]}, Manatory: ${role[1]}, People: ${role[2]}-${role[3]} <button class='removeRole'>Remove</button></li>`);
-    });
+    $("#roleList").html("");
+    for (let i = 0; i < roles.length; i++) {
+        $("#roleList").append(`<li>${roles[i].role}, Role ${(roles[i].mandatory ? "is mandatory" : "is optional")}, People allocated: ${roles[i].minPeople}-${roles[i].maxPeople} <button onclick='RemoveRole(${i})'>Remove</button></li>`);
+    }
+    if (roles.length === 0) {
+        $("#generate").attr("disabled", "disabled");
+        $("#roleList").append("<li>Add a role to begin</li>");
+    }
+    else {
+        $("#generate").removeAttr("disabled");
+    }
 }
 
-$("#updateTimes").on("click", function() {
-    let startTime = $("#startTime").val();
-    let endTime = $("#endTime").val();
-    let shiftTime = $("#shiftTime").val();
-
-    startTime = startTime.split(":");
-    startTime = [parseInt(startTime[0]), parseInt(startTime[1])];
-    endTime = endTime.split(":");
-    endTime = [parseInt(endTime[0]), parseInt(endTime[1])];
-    shiftTime = parseInt(shiftTime);
-    let currentTime = [startTime[0], startTime[1]];
-    let times = [];
-    times.push(currentTime.join(":"));
-
-    while (currentTime[0] < endTime[0] || (currentTime[0] === endTime[0] && currentTime[1] < endTime[1])) {
-        currentTime[1] += shiftTime;
-        if (currentTime[1] >= 60) {
-            currentTime[0] += 1;
-            currentTime[1] -= 60;
+function GetMandatoryRoles() {
+    let mandatoryRoles = [];
+    roles.forEach(role => {
+        if (role.mandatory) {
+            mandatoryRoles.push(role);
         }
-        times.push(currentTime.join(":"));
+    });
+    return mandatoryRoles;
+}
+
+function GetOptionalRoles() {
+    let optionalRoles = [];
+    roles.forEach(role => {
+        if (!role.mandatory) {
+            optionalRoles.push(role);
+        }
+    });
+    return optionalRoles;
+}
+
+
+function UpdatePeopleList() {
+    $("#personList").html("");
+    for (let i = 0; i < people.length; i++) {
+        $("#personList").append(`<li>${people[i]} <button onclick='RemovePerson(${i})'>Remove</button></li>`);
     }
-    shiftTimes = times;
-    drawTable();
-    $("#firstPage").hide();
-    $("#secondPage").show();
+    if ((new Set(people)).size !== people.length) {
+        $("#peopleError").show();
+        $("#updatedPeople").attr("disabled", "disabled");
+    }
+    else if (people.length === 0) {
+        $("#peopleError").hide();
+        $("#updatedPeople").attr("disabled", "disabled");
+        $("#personList").append("<li>Add a person to begin</li>");
+    }
+    else {
+        $("#peopleError").hide();
+        $("#updatedPeople").removeAttr("disabled");
+    }
+}
+
+
+$(function() {
+    $("#peopleError").hide();
 })
 
-$("#table").on("click", "#addPerson", function() {
-    let name = prompt("Enter a name");
-    people.push(name);
-    drawTable();
-})
+$("#updateTimes").on("click", function() {
+    let startTime = $("#startTime").val().split(":");
+    let endTime = $("#endTime").val().split(":");
+    let interval = $("#shiftTime").val();
+
+    startTime = parseInt(startTime[0]) * 60 + parseInt(startTime[1]);
+    endTime = parseInt(endTime[0]) * 60 + parseInt(endTime[1]);
+    interval = parseInt(interval);
+
+    times = [];
+    for (let i = startTime; i <= endTime; i += interval) {
+        times.push(i);
+    }
+
+    $("#secondPage").show();
+    $("#firstPage").hide();
+});
 
 $("#addPerson").on("click", function() {
     let name = $("#people").val();
+
     people.push(name);
     UpdatePeopleList();
-    $("#updatedPeople").removeAttr("disabled");
-})
-
-$("#personList").on("click", ".removePerson", function() {
-    let index = $(this).parent().index();
-    people.splice(index, 1);
-    UpdatePeopleList();
-    drawTable();
-    if (people.length === 0) {
-        $("#updatedPeople").attr("disabled", true);
-        $("#personList").append("<li>Add a person to get started</li>")
-    }
-})
+});
 
 $("#updatedPeople").on("click", function() {
-    if (people.length === 0) {
-        window.alert("You must add at least one person");
-    }
-    else if (CheckForPeopleDuplicates()) {
-        window.alert("You have duplicate names");
-    }
-    else {
-        drawTable()
-        $("#secondPage").hide();
-        $("#thirdPage").show();
-        $("#table").show();
-    }
-})
+    $("#thirdPage").show();
+    $("#secondPage").hide();
+    $("#table").show();
+    DrawTable(MakeTableData());
+});
 
 $("#roles").on("click", function() {
-    $("#thirdPage").hide();
     $("#fourthPage").show();
+    $("#thirdPage").hide();
     $("#table").hide();
-})
-
-$("#roleList").on("click", ".removeRole", function() {
-    let index = $(this).parent().index();
-    roles.splice(index, 1);
-    UpdateRolesList();
-    if (roles.length === 0) {
-        $("#roleList").append("<li>Add a role to get started</li>")
-        $("#generate").attr("disabled", true);
-    }
-})
+});
 
 $("#addRole").on("click", function() {
     let role = $("#role").val();
-    let roleType = $("#type").find(":selected").attr("value");
-    let roleIsMandatory = roleType === "mandatory";
+    let mandatory = $("#type").prop("checked");
     let minPeople = parseInt($("#minPeople").val());
     let maxPeople = parseInt($("#maxPeople").val());
 
-    let array = [role, roleIsMandatory, minPeople, maxPeople];
+    $("#role").val("");
+    $("#peopleForRole").val("");
 
-    roles.push(array);
+    let roleObj = {
+        role: role,
+        mandatory: mandatory,
+        minPeople: minPeople,
+        maxPeople: maxPeople,
+        toBeAllocated: maxPeople,
+    };
+
+    roles.push(roleObj);
     UpdateRolesList();
-    $("#generate").removeAttr("disabled");
-})
-
+});
 
 $("#generate").on("click", function() {
-    // generate 2D array
-    // let data = [];
-    //
-    // for (let i = 0; i < shiftTimes.length - 1; i++) {
-    //     let row = [];
-    //     for (let j = 0; j < people.length; j++) {
-    //         row.push(" ");
-    //     }
-    //     data.push(row);
-    // }
-    //
-    // console.log(data)
-
-    let tableData = [];
-    $("#table tr").each(function() {
-        let rowData = [];
-        $(this).find("td").each(function() {
-            rowData.push($(this).text());
+    // initialize tableData
+    times.forEach((time, index) => {
+        let row = [];
+        people.forEach((person, personIndex) => {
+            row.push("");
         });
-        tableData.push(rowData);
+        tableData.push(row);
+    })
+
+    let data = GetBusyPeople();
+    let notLunched = people.slice();
+
+    times.forEach((time, index) => {
+        // every time slot
+        let peopleAvailable = [];
+        people.forEach((person, personIndex) => {
+            if (!data[index][personIndex]) {
+                peopleAvailable.push(person);
+            }
+        });
+
+        let lunchPeriod = 660 < times[index] && times[index] < 840;
+
+        let mandatoryRoles = GetMandatoryRoles();
+        // cycle through mandatory roles
+        while (mandatoryRoles.length > 0 && peopleAvailable.length > 0) {
+
+            let personIndex;
+            let person;
+
+            if (lunchPeriod && notLunched.length > 0) {
+                // select person from array of available people who haven't lunched
+                let notAssignedAndNotLunched = peopleAvailable.filter(person => notLunched.includes(person));
+                personIndex = Math.floor(Math.random() * notAssignedAndNotLunched.length);
+                person = notAssignedAndNotLunched[personIndex];
+                // remove person from list
+                peopleAvailable.splice(peopleAvailable.indexOf(person), 1);
+                notLunched.splice(notLunched.indexOf(person), 1);
+                tableData[index][people.indexOf(person)] = "Lunch";
+            }
+
+            let role = mandatoryRoles.shift();
+            // select random person
+            personIndex = Math.floor(Math.random() * peopleAvailable.length);
+            person = peopleAvailable[personIndex];
+            // remove person from list
+            peopleAvailable.splice(personIndex, 1);
+            // add to role
+            tableData[index][people.indexOf(person)] = role.role;
+            // tableData.
+            role.toBeAllocated--;
+            if (role.toBeAllocated > 0) mandatoryRoles.push(role);
+        }
+
+        let optionalRoles = GetOptionalRoles();
+        // cycle through optional roles
+        while (optionalRoles.length > 0 && peopleAvailable.length > 0) {
+            let role = optionalRoles.shift();
+            // select random person
+            let personIndex = Math.floor(Math.random() * peopleAvailable.length);
+            let person = peopleAvailable[personIndex];
+            // remove person from list
+            peopleAvailable.splice(personIndex, 1);
+            // add to role
+            tableData[index][people.indexOf(person)] = role.role;
+            // tableData.
+            role.toBeAllocated--;
+            if (role.toBeAllocated > 0) optionalRoles.push(role);
+        }
+
+
+
     });
 
-    // Remove the first row (header)
-    tableData.shift();
-
-    // Remove the first column from each row
-    for (let i = 0; i < tableData.length; i++) {
-        tableData[i].shift();
-    }
-
-    // get required roles
-    let requiredRoles = [];
-    let optionalRoles = [];
-    roles.forEach((role) => {
-        if (role[1]) {
-            requiredRoles.push(role);
-        }
-        else {
-            optionalRoles.push(role);
-        }
-    })
-
-    let notGoneToLunch = people.slice();
-
-    // assign roles according to requirements
-    tableData.forEach((row, index) => {
-        let hour = parseInt(shiftTimes[index].split(":")[0]);
-
-        let canAssign = people.slice();
-        let notAssigned = [];
-        let tempRequiredRoles = requiredRoles.slice();
-        let tempOptionalRoles = optionalRoles.slice();
-
-        for (let column = 0; column < row.length; column++) {
-            let task = row[column];
-            if (task !== " ") {
-                let personDoingTask = people[column];
-                canAssign.splice(canAssign.indexOf(personDoingTask), 1);
-            }
-        }
-        notAssigned = canAssign.slice();
-
-        tempRequiredRoles.forEach((role) => {
-            let min = role[2];
-            let max = role[3];
-            let peopleAssigned = 0;
-            let peopleToAssign = Math.floor(Math.random() * (max - min + 1) + min);
-
-            while (peopleAssigned < peopleToAssign) {
-                if (notAssigned.length === 0) {
-                    break;
-                }
-
-                let personIndex = Math.floor(Math.random() * notAssigned.length);
-                let person = notAssigned[personIndex];
-
-                if (tableData[index][people.indexOf(person)] !== role[0]) {
-                    notAssigned.splice(personIndex, 1);
-                    tableData[index][people.indexOf(person)] = role[0];
-                    peopleAssigned++;
-                }
-            }
-        })
-
-
-        if (11 < hour && hour < 14) {
-            let canAssign = [...new Set([...people, ...notGoneToLunch])];
-            let peopleAssigned = 0;
-            let peopleToAssign = Math.floor(Math.random() * (canAssign.length - 1 + 1) + 1);
-
-            while (peopleAssigned < peopleToAssign) {
-                if (notGoneToLunch.length === 0) {
-                    break;
-                }
-                let personIndex = Math.floor(Math.random() * canAssign.length);
-                let person = canAssign[personIndex];
-
-                let notGoneToLunchIndex = notGoneToLunch.indexOf(person);
-                notGoneToLunch.splice(notGoneToLunchIndex, 1);
-
-                let canAssignIndex = canAssign.indexOf(person);
-                canAssign.splice(canAssignIndex, 1);
-
-                tableData[index][people.indexOf(person)] = "Lunch";
-                peopleAssigned++;
-            }
-        }
-
-        for (let column = 0; column < row.length; column++) {
-            let task = row[column];
-            if (task !== " ") {
-                let personDoingTask = people[column];
-                canAssign.splice(canAssign.indexOf(personDoingTask), 1);
-            }
-        }
-
-        tempOptionalRoles.forEach((role) => {
-            let min = role[2];
-            let max = role[3];
-            let peopleAssigned = 0;
-            let peopleToAssign = Math.floor(Math.random() * (max - min + 1) + min);
-
-            while (peopleAssigned < peopleToAssign) {
-                if (notAssigned.length === 0) {
-                    break;
-                }
-
-                let personIndex = Math.floor(Math.random() * notAssigned.length);
-                let person = notAssigned[personIndex];
-
-                if (tableData[index][people.indexOf(person)] !== role[0]) {
-                    notAssigned.splice(personIndex, 1);
-                    tableData[index][people.indexOf(person)] = role[0];
-                    peopleAssigned++;
-                }
-            }
-        })
-
-    })
-
-    clearTable()
-    addTable(tableData, true);
-    $("#fourthPage").hide();
-    $("#fifthPage").show();
-    $("#table").show()
-})
-
-$("#finish").on("click", function() {
-    $("#fifthPage").hide();
-    $("#firstPage").show();
-    $("#table").hide();
-    $("#startTime").val("");
-    $("#endTime").val("");
-    $("#shiftTime").val("");
-    $("#people").val("");
-    $("#role").val("");
-    $("#minPeople").val("");
-    $("#maxPeople").val("");
-    $("#personList").empty();
-    $("#roleList").empty();
-    $("#generate").attr("disabled", true);
-    $("#updatedPeople").attr("disabled", true);
-})
-
-
-function cellClicked(rowIndex, colIndex) {
-    if (rowIndex > 0 && colIndex > 0) {
-        let data = prompt("Enter data\nLeave blank to remove data");
-
-        if (data === "") {
-            data = " ";
-        }
-        if (!data) {
-            return;
-        }
-
-        let table = $("#table")[0];
-        let cell = table.rows[rowIndex].cells[colIndex]; // This is a DOM "TD" element
-        cell = $(cell); // Now it's a jQuery object.
-        cell.text(data);
-    }
-}
+    DrawTable(tableData);
+    $("#table").show();
+    console.log(tableData)
+});

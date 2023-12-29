@@ -30,6 +30,8 @@
 
             <br><br>
         </div>
+
+
         <div id="secondPage" hidden="hidden">
             <label for="people">Add people this day: </label>
             <input id="people" name="people">
@@ -41,9 +43,13 @@
             </ul>
 
             <button id="updatedPeople" disabled="disabled">Next</button>
+            <div class="tooltip" id="peopleError" hidden><p class="error">!</p><span class="tooltiptext">There's a duplicate name!</span></div>
         </div>
+
+
         <div id="thirdPage" hidden="hidden">
-            <p>Click on a cell below to set extra activities for person</p>
+            <p>Check all the cells where the person isn't available</p>
+            <button onclick="ResetAllCheckboxes()">Reset</button>
             <button id="roles">Next</button>
         </div>
 
@@ -55,11 +61,8 @@
 
                 <br>
 
-                <label for="type">Type: </label>
-                <select id="type">
-                    <option value="none">This job is optional</option>
-                    <option value="mandatory">This job is mandatory</option>
-                </select>
+                <label for="type">Role is compulsory? </label>
+                <input id="type" type="checkbox">
 
                 <br>
 
