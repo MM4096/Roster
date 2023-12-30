@@ -34,9 +34,7 @@ function GetNewTableData() {
     // for (let i = 0; i < tableData.length; i++) {
     //     let row = [];
     //     for (let j = 0; j < tableData[i].length; j++) {
-    //         let cell = $(`#${i},${j}`).html();
-    //         console.log(cell)
-    //         row.push($(`#${i},${j}`).val());
+    //         row.push($(`#${i},${j}`).children().eq(0).val());
     //     }
     //     localTableData.push(row);
     // }

@@ -156,6 +156,17 @@ $(function() {
     $("#peopleError").hide();
 })
 
+$("#loadSettingsFile").on("input", function() {
+    let file = $("#loadSettingsFile")[0].files[0];
+    if (file === undefined) { console.log("returned"); return; }
+    let reader = new FileReader();
+    console.log(reader)
+    reader.addEventListener("load", (event) => {
+        $("#settings").val(event.target.result.toString());
+    });
+    reader.readAsText(file);
+});
+
 $("#loadSettings").on("click", function() {
 
     try {
