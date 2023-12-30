@@ -27,7 +27,7 @@ function GetBusyPeople() {
     return data;
 }
 
-function DrawTable(tableData) {
+function DrawTable(tableData, useInputs = false, id = "table") {
     let table = "<table>";
     table += "<tr><th></th>";
     for (let i = 0; i < people.length; i++) {
@@ -37,12 +37,17 @@ function DrawTable(tableData) {
         table += "<tr>";
         table += `<td>${ConvertToTime(times[i])}</td>`;
         for (let j = 0; j < tableData[i].length; j++) {
-            table += `<td id="${i},${j}">${tableData[i][j]}</td>`;
+            if (useInputs) {
+                table += `<td id="${i},${j}"><input value=" ${tableData[i][j]}"></td>`;
+            }
+            else {
+                table += `<td id="${i},${j}">${tableData[i][j]}</td>`;
+            }
         }
         table += "</tr>";
     }
     table += "</table>";
-    $("#table").html(table);
+    $(`#${id}`).html(table);
 }
 
 function ConvertToTime(minutes) {
@@ -131,10 +136,76 @@ function UpdatePeopleList() {
     }
 }
 
+function SaveSettings() {
+    let settings = {
+        startTime: $("#startTime").val(),
+        endTime: $("#endTime").val(),
+        shiftDuration: $("#shiftTime").val(),
+        people: people,
+        roles: roles,
+    };
+
+    return JSON.stringify(settings);
+}
+
 
 $(function() {
     $("#peopleError").hide();
 })
+
+$("#loadSettings").on("click", function() {
+
+    try {
+        // TODO: Load settings functions
+        let settings = JSON.parse($("#settings").val());
+
+        $("#startTime").val(settings.startTime);
+        $("#endTime").val(settings.endTime);
+        $("#shiftTime").val(settings.shiftDuration);
+        people = settings.people;
+
+        let rolesUnparsed = settings.roles;
+        roles = [];
+        console.log(typeof rolesUnparsed[0].minPeople)
+        rolesUnparsed.forEach(role => {
+            roles.push({
+                role: role.role,
+                mandatory: role.mandatory,
+                minPeople: parseInt(role.minPeople),
+                maxPeople: parseInt(role.maxPeople),
+                toBeAllocated: parseInt(role.maxPeople),
+            });
+        });
+    }
+    catch (err) {
+        alert(`Invalid settings loaded!\nPlease check your settings and try again.\n\nError: ${err}`);
+        return;
+    }
+
+    UpdatePeopleList();
+    UpdateRolesList();
+
+    $("#loadData").hide();
+    $("#firstPage").show();
+});
+
+$("#clearSettings").on("click", function() {
+    if ($("#settings").val() === "") { return;}
+    let result = confirm("Are you sure you want to clear all settings?");
+    if (!result) { return; }
+    $("#settings").val("");
+});
+
+$("#toFirstPage").on("click", function() {
+    $("#loadData").hide();
+    $("#firstPage").show();
+});
+
+$("#people").on("keyup", function(event) {
+    if (event.key === "Enter") {
+        $("#addPerson").click();
+    }
+});
 
 $("#updateTimes").on("click", function() {
     let startTime = $("#startTime").val().split(":");
@@ -156,6 +227,7 @@ $("#updateTimes").on("click", function() {
 
 $("#addPerson").on("click", function() {
     let name = $("#people").val();
+    if (name === "") { return; }
 
     people.push(name);
     UpdatePeopleList();
@@ -179,6 +251,8 @@ $("#addRole").on("click", function() {
     let mandatory = $("#type").prop("checked");
     let minPeople = parseInt($("#minPeople").val());
     let maxPeople = parseInt($("#maxPeople").val());
+
+    if (role === "" || isNaN(minPeople) || isNaN(maxPeople) || maxPeople < minPeople) { alert("A role could not be created!\n\nAre you missing a name?\nAre Minimum and Maximum people numbers?\nIs Maximum people equal or greater than Minimum people?"); return; }
 
     $("#role").val("");
     $("#peopleForRole").val("");
@@ -237,10 +311,17 @@ $("#generate").on("click", function() {
                 tableData[index][people.indexOf(person)] = "Lunch";
             }
 
+            // try to deter the same person getting the same role twice
+
+            let triesLeft = 10;
+
             let role = mandatoryRoles.shift();
             // select random person
-            personIndex = Math.floor(Math.random() * peopleAvailable.length);
-            person = peopleAvailable[personIndex];
+            do {
+                personIndex = Math.floor(Math.random() * peopleAvailable.length);
+                person = peopleAvailable[personIndex];
+                triesLeft--;
+            } while (triesLeft > 0 && tableData[index][people.indexOf(person)] === role.role);
             // remove person from list
             peopleAvailable.splice(personIndex, 1);
             // add to role
@@ -248,6 +329,16 @@ $("#generate").on("click", function() {
             // tableData.
             role.toBeAllocated--;
             if (role.toBeAllocated > 0) mandatoryRoles.push(role);
+
+        }
+
+        if (lunchPeriod) {
+            peopleAvailable.forEach((person) => {
+                if (notLunched.includes(person)) {
+                    tableData[index][people.indexOf(person)] = "Lunch";
+                    notLunched.splice(notLunched.indexOf(person), 1);
+                }
+            })
         }
 
         let optionalRoles = GetOptionalRoles();
@@ -270,7 +361,20 @@ $("#generate").on("click", function() {
 
     });
 
-    DrawTable(tableData);
+    DrawTable(tableData, true);
+    $("#fourthPage").hide();
+    $("#fifthPage").show();
     $("#table").show();
-    console.log(tableData)
+
+    $("#currentSettings").val(SaveSettings());
+});
+
+$("#saveSettings").on("click", function() {
+    navigator.clipboard.writeText(SaveSettings()).then(function() {
+        $("#saveSettings").text("Copied!")
+    });
+});
+
+$("#closeSettings").on("click", function() {
+    $("#settingsPopup").hide();
 });
