@@ -28,6 +28,33 @@ function download_table_as_csv(table_id, separator = ',') {
     document.body.removeChild(link);
 }
 
+function GetNewTableData() {
+    let localTableData = [];
+    let table = document.getElementById("table");
+    // for (let i = 0; i < tableData.length; i++) {
+    //     let row = [];
+    //     for (let j = 0; j < tableData[i].length; j++) {
+    //         let cell = $(`#${i},${j}`).html();
+    //         console.log(cell)
+    //         row.push($(`#${i},${j}`).val());
+    //     }
+    //     localTableData.push(row);
+    // }
+
+    for (let row of table.rows) {
+        let localRow = [];
+        for (let cell of row.cells) {
+            let jCell = $(cell);
+            let content = jCell.children().eq(0).val();
+            if (content !== undefined) { localRow.push(content); }
+        }
+        localTableData.push(localRow);
+    }
+
+    localTableData.splice(0, 1);
+    return localTableData;
+}
+
 
 
 $("#downloadSettings").on("click", function() {
@@ -49,12 +76,12 @@ $("#downloadSettings").on("click", function() {
 })
 
 $("#downloadCSV").on("click", function() {
-    DrawTable(tableData, false, "saveTable");
+    DrawTable(GetNewTableData(), false, "saveTable", false);
     download_table_as_csv('saveTable');
 });
 
 $("#downloadPDF").on("click", function() {
-    DrawTable(tableData, false, "saveTable");
+    DrawTable(GetNewTableData(), false, "saveTable", false);
 
     let printWindow = window.open('', '');
     printWindow.document.write('<html lang="en-US"><head><title>Roster PDF</title><style>' +

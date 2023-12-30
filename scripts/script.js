@@ -27,7 +27,7 @@ function GetBusyPeople() {
     return data;
 }
 
-function DrawTable(tableData, useInputs = false, id = "table") {
+function DrawTable(tableData, useInputs = false, id = "table", createID = true) {
     let table = "<table>";
     table += "<tr><th></th>";
     for (let i = 0; i < people.length; i++) {
@@ -39,6 +39,9 @@ function DrawTable(tableData, useInputs = false, id = "table") {
         for (let j = 0; j < tableData[i].length; j++) {
             if (useInputs) {
                 table += `<td id="${i},${j}"><input value=" ${tableData[i][j]}"></td>`;
+            }
+            else if (!createID) {
+                table += `<td>${tableData[i][j]}</td>`;
             }
             else {
                 table += `<td id="${i},${j}">${tableData[i][j]}</td>`;
@@ -270,6 +273,9 @@ $("#addRole").on("click", function() {
 });
 
 $("#generate").on("click", function() {
+    // region generation
+
+
     // initialize tableData
     times.forEach((time, index) => {
         let row = [];
@@ -361,10 +367,13 @@ $("#generate").on("click", function() {
 
     });
 
+    // endregion
+
     DrawTable(tableData, true);
     $("#fourthPage").hide();
     $("#fifthPage").show();
     $("#table").show();
+    $("#settingsPopup").show();
 
     $("#currentSettings").val(SaveSettings());
 });

@@ -110,16 +110,6 @@
             <button id="downloadCSV">Download as CSV</button>
 
             <br>
-
-            <div class="border" id="settingsPopup">
-                <label for="currentSettings">Current roster settings</label>
-                <br>
-                <textarea id="currentSettings" name="tableData" rows="5" cols="50"></textarea>
-                <br><br>
-                <button id="saveSettings">Copy</button>
-                <button id="downloadSettings">Download</button>
-                <button id="closeSettings">Close</button>
-            </div>
         </div>
 
         <table id="table" hidden="hidden">
@@ -130,6 +120,18 @@
                 <td>1</td>
             </tr>
         </table>
+
+        <br><br>
+
+        <div class="border" id="settingsPopup" hidden="hidden">
+            <label for="currentSettings">Current roster settings</label>
+            <br>
+            <textarea id="currentSettings" name="tableData" rows="5" cols="50"></textarea>
+            <br><br>
+            <button id="saveSettings">Copy</button>
+            <button id="downloadSettings">Download</button>
+            <button id="closeSettings">Close</button>
+        </div>
 
         <br><br>
 
