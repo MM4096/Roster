@@ -331,6 +331,7 @@ $("#generate").on("click", function() {
         if (lunchPeriod) {
             mandatoryRoles.push({role: "Lunch"});
         }
+        let worthIt = true;
         // cycle through mandatory roles
         while (mandatoryRoles.length > 0 && peopleAvailable.length > 0) {
             let role = mandatoryRoles.shift();
@@ -360,23 +361,30 @@ $("#generate").on("click", function() {
                 weights.push(weight);
             })
 
+            let worthIt = true;
             let totalWeight = weights.reduce((a, b) => a + b, 0);
             let random = Math.floor(Math.random() * totalWeight);
-            let personIndex = 0;
-            let currentWeight = 0;
-            for (let i = 0; i < weights.length; i++) {
-                currentWeight += weights[i];
-                if (currentWeight > random) {
-                    personIndex = i;
-                    break;
-                }
+            let average = totalWeight / weights.length;
+            if (average < 5) {
+                worthIt = false
             }
+            else {
+                let personIndex = 0;
+                let currentWeight = 0;
+                for (let i = 0; i < weights.length; i++) {
+                    currentWeight += weights[i];
+                    if (currentWeight > random) {
+                        personIndex = i;
+                        break;
+                    }
+                }
 
-            let person = peopleAvailable[personIndex];
-            peopleAvailable.splice(personIndex, 1);
-            tableData[index][people.indexOf(person)] = role.role;
-            role.toBeAllocated--;
-            if (role.toBeAllocated > 0) mandatoryRoles.push(role);
+                let person = peopleAvailable[personIndex];
+                peopleAvailable.splice(personIndex, 1);
+                tableData[index][people.indexOf(person)] = role.role;
+                role.toBeAllocated--;
+            }
+            if (role.toBeAllocated > 0 && worthIt) mandatoryRoles.push(role);
         }
 
         if (peopleAvailable.length > 0 && lunchPeriod) {
