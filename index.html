@@ -16,7 +16,7 @@
             <textarea id="settings" name="loadSettingsInput" rows="5" cols="50"></textarea>
             <br>
             <label for="loadSettingsFile">Or load from file</label>
-            <input type="file" id="loadSettingsFile" >
+            <input type="file" id="loadSettingsFile" accept="application/json">
 
             <br><br>
 
@@ -72,6 +72,10 @@
             <p>Check all the cells where the person isn't available</p>
             <button onclick="ResetAllCheckboxes()">Reset</button>
             <button id="roles">Next</button>
+            <br>
+            <label for="busyInput">Text for busy people: </label>
+            <input id="busyInput" value="Busy">
+            <br>
         </div>
 
         <div id="fourthPage" hidden="hidden">

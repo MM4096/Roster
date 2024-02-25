@@ -306,55 +306,83 @@ $("#generate").on("click", function() {
             if (!data[index][personIndex]) {
                 peopleAvailable.push(person);
             }
+            else {
+                tableData[index][personIndex] = $("#busyInput").val();
+            }
         });
 
         let lunchPeriod = 660 < times[index] && times[index] < 840;
+        let notLunched = [];
+        // search for lunch
+        peopleAvailable.forEach((person) => {
+            let personIndex = people.indexOf(person);
+            let lunched = false;
+            for (let i = 0; i < tableData.length; i++) {
+                if (tableData[i][personIndex] === "Lunch") {
+                    lunched = true;
+                }
+            }
+            if (!lunched) {
+                notLunched.push(person);
+            }
+        })
 
         let mandatoryRoles = GetMandatoryRoles();
+        if (lunchPeriod) {
+            mandatoryRoles.push({role: "Lunch"});
+        }
         // cycle through mandatory roles
         while (mandatoryRoles.length > 0 && peopleAvailable.length > 0) {
+            let role = mandatoryRoles.shift();
+            let weights = [];
 
-            let personIndex;
-            let person;
+            peopleAvailable.forEach(person => {
+                let weight = 10;
+                let personIndex = people.indexOf(person);
+                let personRoles = [];
+                // get all roles of this person
+                for (let i = 0; i < tableData.length; i++) {
+                    personRoles.push(tableData[i][personIndex]);
+                }
 
-            if (lunchPeriod && notLunched.length > 0) {
-                // select person from array of available people who haven't lunched
-                let notAssignedAndNotLunched = peopleAvailable.filter(person => notLunched.includes(person));
-                personIndex = Math.floor(Math.random() * notAssignedAndNotLunched.length);
-                person = notAssignedAndNotLunched[personIndex];
-                // remove person from list
-                peopleAvailable.splice(peopleAvailable.indexOf(person), 1);
-                notLunched.splice(notLunched.indexOf(person), 1);
-                tableData[index][people.indexOf(person)] = "Lunch";
+                // decrease weight if person has already done role
+                if (personRoles.includes(role.role)) {
+                    weight -= 3;
+                }
+                // decrease weight if person has already done role in the last block
+                if (index > 0 && tableData[index - 1][personIndex] === role.role) {
+                    weight -= 5;
+                }
+                if (lunchPeriod && notLunched.includes(person)) {
+                    weight -= 2;
+                }
+
+                weights.push(weight);
+            })
+
+            let totalWeight = weights.reduce((a, b) => a + b, 0);
+            let random = Math.floor(Math.random() * totalWeight);
+            let personIndex = 0;
+            let currentWeight = 0;
+            for (let i = 0; i < weights.length; i++) {
+                currentWeight += weights[i];
+                if (currentWeight > random) {
+                    personIndex = i;
+                    break;
+                }
             }
 
-            // try to deter the same person getting the same role twice
-
-            let triesLeft = 10;
-
-            let role = mandatoryRoles.shift();
-            // select random person
-            do {
-                personIndex = Math.floor(Math.random() * peopleAvailable.length);
-                person = peopleAvailable[personIndex];
-                triesLeft--;
-            } while (triesLeft > 0 && tableData[index][people.indexOf(person)] === role.role);
-            // remove person from list
+            let person = peopleAvailable[personIndex];
             peopleAvailable.splice(personIndex, 1);
-            // add to role
             tableData[index][people.indexOf(person)] = role.role;
-            // tableData.
             role.toBeAllocated--;
             if (role.toBeAllocated > 0) mandatoryRoles.push(role);
-
         }
 
-        if (lunchPeriod) {
-            peopleAvailable.forEach((person) => {
-                if (notLunched.includes(person)) {
-                    tableData[index][people.indexOf(person)] = "Lunch";
-                    notLunched.splice(notLunched.indexOf(person), 1);
-                }
+        if (peopleAvailable.length > 0 && lunchPeriod) {
+            let availableAndNotLunched = peopleAvailable.filter(person => notLunched.includes(person));
+            availableAndNotLunched.forEach(person => {
+                tableData[index][people.indexOf(person)] = "Lunch";
             })
         }
 
