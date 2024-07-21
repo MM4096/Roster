@@ -167,7 +167,7 @@ $("#loadSettingsFile").on("input", function() {
     reader.readAsText(file);
 });
 
-$("#loadSettings").on("click", function() {
+$("#loadSettings").on("click", function () {
 
     try {
         // TODO: Load settings functions
@@ -190,9 +190,14 @@ $("#loadSettings").on("click", function() {
                 toBeAllocated: parseInt(role.maxPeople),
             });
         });
-    }
-    catch (err) {
+    } catch (err) {
         alert(`Invalid settings loaded!\nPlease check your settings and try again.\n\nError: ${err}`);
+        return;
+    }
+
+    let result = LoadGenerationScript();
+
+    if (!result) {
         return;
     }
 
@@ -203,6 +208,80 @@ $("#loadSettings").on("click", function() {
     $("#firstPage").show();
 });
 
+function LoadGenerationScript() {
+    let fileInput = $("#loadCustomScript");
+    if (fileInput === undefined) {
+        LoadLocalGenerationScript();
+        return true;
+    }
+
+    // grab specified script (if exists)
+    const file = fileInput[0].files[0];
+    console.log(file);
+
+    if (file !== undefined && file.type === "application/x-javascript") {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const scriptContent = e.target.result.toString();
+            let splitContent = scriptContent.split(/\r?\n|\r|\n/g);
+            if (splitContent.length > 2) {
+                let header = splitContent[0];
+                let info = splitContent[1];
+
+                let headerString = ""
+                let infoString = ""
+                if (header.includes("SCRIPT_HEADER")) {
+                    headerString = header.split("SCRIPT_HEADER")[1].trim();
+                }
+                if (info.includes("SCRIPT_INFO")) {
+                    infoString = info.split("SCRIPT_INFO")[1].trim();
+                }
+                let response = confirm(`Do you want to use this script?\nHeader: ${headerString}\nInfo: ${infoString}\nDO NOT use any scripts that you do not trust!`);
+                if (!response) {
+                    return false;
+                }
+            }
+
+            const scriptElement = document.createElement('script');
+            scriptElement.type = 'text/javascript';
+            scriptElement.text = scriptContent;
+            $("body").append(scriptElement);
+
+            if (!GenerateRoster) {
+                alert("Could not find GenerateRoster function in the script!");
+                return false;
+            }
+        };
+        reader.readAsText(file);
+    } else {
+        LoadLocalGenerationScript();
+    }
+    return true
+}
+
+function LoadLocalGenerationScript() {
+    if (window.GenerateRoster) {
+        console.warn("GenerateRoster function already exists!");
+        return;
+    }
+    console.log("Loading local script...");
+    // load local script 'roster.js'
+    const scriptElement = document.createElement('script');
+    scriptElement.type = 'text/javascript';
+    // scriptElement.src = 'scripts/roster.js';
+    scriptElement.src = "alt_generation_scripts/lunchFirst.js"
+    $("body").append(scriptElement)
+}
+
+$("#instantGeneration").on("click", function () {
+    $("#loadSettings").click()
+    $("#updateTimes").click();
+    $("#updatedPeople").click();
+    $("#roles").click();
+    $("#generate").click();
+})
+
 $("#clearSettings").on("click", function() {
     if ($("#settings").val() === "") { return;}
     let result = confirm("Are you sure you want to clear all settings?");
@@ -211,6 +290,9 @@ $("#clearSettings").on("click", function() {
 });
 
 $("#toFirstPage").on("click", function() {
+    if (!LoadGenerationScript()) {
+        return;
+    }
     $("#loadData").hide();
     $("#firstPage").show();
 });
@@ -284,137 +366,7 @@ $("#addRole").on("click", function() {
 });
 
 $("#generate").on("click", function() {
-    // region generation
-
-
-    // initialize tableData
-    times.forEach((time, index) => {
-        let row = [];
-        people.forEach((person, personIndex) => {
-            row.push("");
-        });
-        tableData.push(row);
-    })
-
-    let data = GetBusyPeople();
-    let notLunched = people.slice();
-
-    times.forEach((time, index) => {
-        // every time slot
-        let peopleAvailable = [];
-        people.forEach((person, personIndex) => {
-            if (!data[index][personIndex]) {
-                peopleAvailable.push(person);
-            }
-            else {
-                tableData[index][personIndex] = $("#busyInput").val();
-            }
-        });
-
-        let lunchPeriod = 660 < times[index] && times[index] < 840;
-        let notLunched = [];
-        // search for lunch
-        peopleAvailable.forEach((person) => {
-            let personIndex = people.indexOf(person);
-            let lunched = false;
-            for (let i = 0; i < tableData.length; i++) {
-                if (tableData[i][personIndex] === "Lunch") {
-                    lunched = true;
-                }
-            }
-            if (!lunched) {
-                notLunched.push(person);
-            }
-        })
-
-        let mandatoryRoles = GetMandatoryRoles();
-        if (lunchPeriod) {
-            mandatoryRoles.push({role: "Lunch"});
-        }
-        let worthIt = true;
-        // cycle through mandatory roles
-        while (mandatoryRoles.length > 0 && peopleAvailable.length > 0) {
-            let role = mandatoryRoles.shift();
-            let weights = [];
-
-            peopleAvailable.forEach(person => {
-                let weight = 10;
-                let personIndex = people.indexOf(person);
-                let personRoles = [];
-                // get all roles of this person
-                for (let i = 0; i < tableData.length; i++) {
-                    personRoles.push(tableData[i][personIndex]);
-                }
-
-                // decrease weight if person has already done role
-                if (personRoles.includes(role.role)) {
-                    weight -= 3;
-                }
-                // decrease weight if person has already done role in the last block
-                if (index > 0 && tableData[index - 1][personIndex] === role.role) {
-                    weight -= 5;
-                }
-                if (lunchPeriod && notLunched.includes(person)) {
-                    weight -= 2;
-                }
-
-                weights.push(weight);
-            })
-
-            let worthIt = true;
-            let totalWeight = weights.reduce((a, b) => a + b, 0);
-            let random = Math.floor(Math.random() * totalWeight);
-            let average = totalWeight / weights.length;
-            if (average < 5) {
-                worthIt = false
-            }
-            else {
-                let personIndex = 0;
-                let currentWeight = 0;
-                for (let i = 0; i < weights.length; i++) {
-                    currentWeight += weights[i];
-                    if (currentWeight > random) {
-                        personIndex = i;
-                        break;
-                    }
-                }
-
-                let person = peopleAvailable[personIndex];
-                peopleAvailable.splice(personIndex, 1);
-                tableData[index][people.indexOf(person)] = role.role;
-                role.toBeAllocated--;
-            }
-            if (role.toBeAllocated > 0 && worthIt) mandatoryRoles.push(role);
-        }
-
-        if (peopleAvailable.length > 0 && lunchPeriod) {
-            let availableAndNotLunched = peopleAvailable.filter(person => notLunched.includes(person));
-            availableAndNotLunched.forEach(person => {
-                tableData[index][people.indexOf(person)] = "Lunch";
-            })
-        }
-
-        let optionalRoles = GetOptionalRoles();
-        // cycle through optional roles
-        while (optionalRoles.length > 0 && peopleAvailable.length > 0) {
-            let role = optionalRoles.shift();
-            // select random person
-            let personIndex = Math.floor(Math.random() * peopleAvailable.length);
-            let person = peopleAvailable[personIndex];
-            // remove person from list
-            peopleAvailable.splice(personIndex, 1);
-            // add to role
-            tableData[index][people.indexOf(person)] = role.role;
-            // tableData.
-            role.toBeAllocated--;
-            if (role.toBeAllocated > 0) optionalRoles.push(role);
-        }
-
-
-
-    });
-
-    // endregion
+    GenerateRoster();
 
     DrawTable(tableData, true);
     $("#fourthPage").hide();
@@ -434,3 +386,32 @@ $("#saveSettings").on("click", function() {
 $("#closeSettings").on("click", function() {
     $("#settingsPopup").hide();
 });
+
+/**
+ * Returns a random integer between min (inclusive) and max (inclusive)
+ */
+function GetRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Shuffles an array
+ */
+function ShuffleArray(array) {
+    let _currentIndex = array.length;
+
+    // While there remain elements to shuffle...
+    while (_currentIndex !== 0) {
+
+        // Pick a remaining element...
+        let randomIndex = Math.floor(Math.random() * _currentIndex);
+        _currentIndex--;
+
+        // And swap it with the current element.
+        [array[_currentIndex], array[randomIndex]] = [
+            array[randomIndex], array[_currentIndex]];
+    }
+    return array;
+}
