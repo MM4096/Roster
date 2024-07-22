@@ -1,0 +1,43 @@
+name: New Generation Script
+about: Submit your own generation scripts.
+assignees: "mm4096"
+title: "[GENERATION]: {your script name here}"
+labels: "new generation script"
+
+body:
+- type: markdown
+  attributes:
+    value: "## New Generation Script"
+- type: checkboxes
+  id: prior-checks
+  attributes:
+    label: Please confirm the following:
+    options:
+    - label: This script contains a `GenerateRoster()` function that returns `void` (or has no return).
+      required: true
+    - label: The script writes to the public variable `tableData` (defined in `script.js`).
+      required: true
+    - label: The script uses public variables and functions defined in `script.js` instead of grabbing user input by itself.
+      required: true
+    - label: The script does not use any other function not defined in `script.js` or itself.
+      required: true
+    - label: The script can be run locally, ideally without an internet connection, and does not interact with the wider internet (does not get data or write data to a server, for example).
+      required: true
+- type: input
+  id: name-of-script
+  attributes:
+    label: Name of Script
+    description: What should the script be named?
+  validations:
+    required: true
+- type: textarea
+  id: description-script
+  attributes:
+    label: Description of Script
+    description: Describe your script in a few sentences.
+    placeholder: This script...
+- type: textarea
+  id: script-code
+  attributes:
+    label: Code
+    description: Either attach your script as a `.zip` file, or copy/paste your code in the box below.
