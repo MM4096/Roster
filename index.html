@@ -20,8 +20,15 @@
 
             <br><br>
 
-            <label for="loadCustomScript">Load custom script (leave empty for default)</label>
-            <input type="file" id="loadCustomScript" accept="text/javascript" value="">
+            <label for="chooseGenerationScript">Select a generation script</label>
+            <select id="chooseGenerationScript">
+                <option value="default" selected="selected">Default</option>
+                <option value="lunchFirst">Lunch First</option>
+            </select>
+            <label>
+                <br>
+                <textarea disabled="disabled" id="scriptSelectionInformation" cols="50" rows="5">Generates roster top-down (DEFAULT)</textarea>
+            </label>
 
             <br>
 
@@ -121,8 +128,9 @@
 
         <div id="fifthPage" hidden="hidden">
             <p>Modify table</p>
-            <button id="finish">Finish</button>
+            <button id="regenerate">Re-generate Roster</button>
             <button id="downloadPDF">Download as PDF</button>
+            <button id="copyCSV">Copy to clipboard</button>
             <button id="downloadCSV">Download as CSV</button>
 
             <br>

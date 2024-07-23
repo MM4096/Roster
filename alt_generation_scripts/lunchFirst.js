@@ -68,38 +68,91 @@ function GenerateRoster() {
     // region fill in the rest
 
     times.forEach((time, index) => {
-        let peopleAvailable = [];
-        people.forEach((person, personIndex) => {
-            if (tableData[index][personIndex] === "") {
-                peopleAvailable.push(person);
-            }
-        });
+        console.groupCollapsed(`Time slot ${index}`)
 
+        console.groupCollapsed(`Mandatory roles`)
         let mandatoryRoles = GetMandatoryRoles().slice();
-        let previousRow = index > 1 ? tableData[index - 1] : tableData[index];
+        let mandatoryCompletedMinimumRoles = []
+        let previousRow = index > 0 ? tableData[index - 1] : tableData[index];
+        console.log(`previousRow: ${previousRow}`)
         // cycle through mandatory roles
         while (mandatoryRoles.length > 0) {
-            let thisRole = mandatoryRoles.shift();
-            thisRole.count++;
-            // get all people who have not done this role
-            let peopleWhoHaventDoneThisRole = peopleAvailable.filter((person) => {
-                return !previousRow[people.indexOf(person)] === thisRole.role;
+
+            let peopleAvailable = [];
+            people.forEach((person, personIndex) => {
+                if (tableData[index][personIndex] === "") {
+                    peopleAvailable.push(person);
+                }
             });
+
+            let thisRole = mandatoryRoles.shift();
+            console.groupCollapsed(`Role {thisRole.role: ${thisRole.role}, thisRole.count: ${thisRole.count}`);
+            if (thisRole.count === undefined) {
+                thisRole.count = 0;
+            }
+            thisRole.count++;
+            let peopleWhoHaventDoneThisRole = [];
+            peopleAvailable.forEach((person) => {
+                if (previousRow[people.indexOf(person)] !== thisRole.role) {
+                    console.log(`Adding ${person} to peopleWhoHaventDoneThisRole`);
+                    peopleWhoHaventDoneThisRole.push(person);
+                }
+                else {
+                    console.log(`Skipping ${person} because they've already done this role in a previous time slot`);
+                }
+            })
+
+            // prioritize people who haven't done anything last block
+            let peopleWhoHaventDoneAnything = [];
+            peopleAvailable.forEach((person) => {
+                if (previousRow[people.indexOf(person)] === "") {
+                    peopleWhoHaventDoneAnything.push(person);
+                }
+            });
+            if (peopleWhoHaventDoneAnything.length > 0) {
+                console.log(`peopleWhoHaventDoneAnything: ${peopleWhoHaventDoneAnything}`);
+                peopleWhoHaventDoneThisRole = peopleWhoHaventDoneAnything;
+            }
+
             if (peopleWhoHaventDoneThisRole.length === 0) {
                 // no one left who hasn't done this role, so add everyone
+                console.log(`No one left who hasn't done this role, so adding everyone`);
                 peopleWhoHaventDoneThisRole = peopleAvailable;
             }
             // select a person
             peopleWhoHaventDoneThisRole = ShuffleArray(peopleWhoHaventDoneThisRole);
+            console.log(`peopleWhoHaventDoneThisRole: ${peopleWhoHaventDoneThisRole}`);
             let person = peopleWhoHaventDoneThisRole.shift();
             if (person === undefined) {
+                console.groupEnd();
                 break;
             }
             tableData[index][people.indexOf(person)] = thisRole.role;
-            if (thisRole.count < thisRole.maxPeople) {
-                peopleAvailable.push(person);
+            console.log(`Assigned ${person} to ${thisRole.role}`);
+            if (thisRole.count < thisRole.minPeople) {
+                console.log(`Adding {thisRole.role: ${thisRole.role}, thisRole.count: ${thisRole.count}} back to mandatoryRoles`);
+                mandatoryRoles.push(thisRole);
             }
+            else if (thisRole.count < thisRole.maxPeople) {
+                console.log(`Adding {thisRole.role: ${thisRole.role}, thisRole.count: ${thisRole.count}} back to mandatoryCompletedMinimumRoles`);
+                mandatoryCompletedMinimumRoles.push(thisRole);
+            }
+            else {
+                console.log(`Resetting count for ${thisRole.role} (and removing from mandatoryRoles)`);
+                thisRole.count = 0;
+            }
+
+            if (mandatoryRoles.length === 0) {
+                console.log(`mandatoryRoles is empty, adding mandatoryCompletedMinimumRoles back to mandatoryRoles`);
+                mandatoryRoles = mandatoryCompletedMinimumRoles;
+                mandatoryCompletedMinimumRoles = [];
+            }
+
+            console.groupEnd();
         }
+        console.groupEnd();
+
+        console.groupEnd();
     });
 
     // endregion

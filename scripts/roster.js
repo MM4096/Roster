@@ -121,8 +121,5 @@ function GenerateRoster() {
             role.toBeAllocated--;
             if (role.toBeAllocated > 0) optionalRoles.push(role);
         }
-
-
-
     });
 }

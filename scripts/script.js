@@ -2,6 +2,24 @@ let times = [];
 let people = [];
 let roles = [];
 let tableData = [];
+const CUSTOM_GENERATION_INFO = [
+    {
+        "name": "default",
+        "displayName": "Original (Default)",
+        "scriptPath": "scripts/roster.js",
+        "description": "This script generates from the top-down. It doesn't assign tasks to already busy people. However, it may give very late lunches. To remedy this, try the [Lunch First] script.",
+    },
+    {
+        "name": "lunchFirst",
+        "displayName": "Lunch First (WIP)",
+        "scriptPath": "alt_generation_scripts/lunchFirst.js",
+        "description": "Based on: [default]\nThis script assigns lunch blocks first, then goes from top to bottom.\nThis fixes the problem with [default], of occasionally not assigning lunches.",
+    }
+];
+
+$(document).ready(function() {
+    UpdateGenerationScripts();
+})
 
 function MakeTableData() {
     let tableData = [];
@@ -36,15 +54,17 @@ function DrawTable(tableData, useInputs = false, id = "table", createID = true) 
     for (let i = 0; i < tableData.length; i++) {
         table += "<tr>";
         table += `<td>${ConvertToTime(times[i])}</td>`;
+
         for (let j = 0; j < tableData[i].length; j++) {
+            let this_value = tableData[i][j] === "" ? " " : tableData[i][j];
             if (useInputs) {
-                table += `<td id="${i},${j}"><input value=" ${tableData[i][j]}"></td>`;
+                table += `<td id="${i},${j}"><input value="${this_value}"></td>`;
             }
             else if (!createID) {
-                table += `<td>${tableData[i][j]}</td>`;
+                table += `<td>${this_value}</td>`;
             }
             else {
-                table += `<td id="${i},${j}">${tableData[i][j]}</td>`;
+                table += `<td id="${i},${j}">${this_value}</td>`;
             }
         }
         table += "</tr>";
@@ -209,69 +229,17 @@ $("#loadSettings").on("click", function () {
 });
 
 function LoadGenerationScript() {
-    let fileInput = $("#loadCustomScript");
-    if (fileInput === undefined) {
-        LoadLocalGenerationScript();
-        return true;
+    let info = GetCurrentlySelectedGenerationScript();
+    if (info === undefined) {
+        alert("No generation script selected!");
+        return false;
     }
-
-    // grab specified script (if exists)
-    const file = fileInput[0].files[0];
-    console.log(file);
-
-    if (file !== undefined && file.type === "application/x-javascript") {
-        const reader = new FileReader();
-
-        reader.onload = function (e) {
-            const scriptContent = e.target.result.toString();
-            let splitContent = scriptContent.split(/\r?\n|\r|\n/g);
-            if (splitContent.length > 2) {
-                let header = splitContent[0];
-                let info = splitContent[1];
-
-                let headerString = ""
-                let infoString = ""
-                if (header.includes("SCRIPT_HEADER")) {
-                    headerString = header.split("SCRIPT_HEADER")[1].trim();
-                }
-                if (info.includes("SCRIPT_INFO")) {
-                    infoString = info.split("SCRIPT_INFO")[1].trim();
-                }
-                let response = confirm(`Do you want to use this script?\nHeader: ${headerString}\nInfo: ${infoString}\nDO NOT use any scripts that you do not trust!`);
-                if (!response) {
-                    return false;
-                }
-            }
-
-            const scriptElement = document.createElement('script');
-            scriptElement.type = 'text/javascript';
-            scriptElement.text = scriptContent;
-            $("body").append(scriptElement);
-
-            if (!GenerateRoster) {
-                alert("Could not find GenerateRoster function in the script!");
-                return false;
-            }
-        };
-        reader.readAsText(file);
-    } else {
-        LoadLocalGenerationScript();
-    }
-    return true
-}
-
-function LoadLocalGenerationScript() {
-    if (window.GenerateRoster) {
-        console.warn("GenerateRoster function already exists!");
-        return;
-    }
-    console.log("Loading local script...");
-    // load local script 'roster.js'
+    console.log("Loading generation script...");
     const scriptElement = document.createElement('script');
     scriptElement.type = 'text/javascript';
-    // scriptElement.src = 'scripts/roster.js';
-    scriptElement.src = "alt_generation_scripts/lunchFirst.js"
-    $("body").append(scriptElement)
+    scriptElement.src = info.scriptPath;
+    $("body").append(scriptElement);
+    return true;
 }
 
 $("#instantGeneration").on("click", function () {
@@ -366,7 +334,9 @@ $("#addRole").on("click", function() {
 });
 
 $("#generate").on("click", function() {
+    console.groupCollapsed("Roster Generation")
     GenerateRoster();
+    console.groupEnd();
 
     DrawTable(tableData, true);
     $("#fourthPage").hide();
@@ -386,6 +356,47 @@ $("#saveSettings").on("click", function() {
 $("#closeSettings").on("click", function() {
     $("#settingsPopup").hide();
 });
+
+$("#regenerate").on("click", function() {
+    tableData = []
+    console.groupCollapsed("Roster Regeneration")
+    GenerateRoster();
+    console.groupEnd();
+
+    $("#table").html("<>");
+    DrawTable(tableData, true);
+    $("#settingsPopup").show();
+});
+
+$("#chooseGenerationScript").change(function () {
+    let info = GetCurrentlySelectedGenerationScript()
+    let textarea = $("#scriptSelectionInformation");
+    if (info === undefined) {
+        textarea.val("No script selected");
+        return;
+    }
+    textarea.val(info.description);
+})
+
+function UpdateGenerationScripts() {
+    let select = $("#chooseGenerationScript");
+    select.html("");
+    CUSTOM_GENERATION_INFO.forEach(script => {
+        select.append(`<option value="${script.name}">${script.displayName}</option>`);
+    });
+    select.children("option").first().attr("selected", "selected");
+    select.change();
+}
+
+function GetCurrentlySelectedGenerationScript() {
+    return GetGenerationScriptInfo($("#chooseGenerationScript").children("option").filter(":selected").attr("value"));
+}
+
+function GetGenerationScriptInfo(script) {
+    return CUSTOM_GENERATION_INFO.find(x => x.name === script);
+}
+
+// region Global functions
 
 /**
  * Returns a random integer between min (inclusive) and max (inclusive)
@@ -415,3 +426,5 @@ function ShuffleArray(array) {
     }
     return array;
 }
+
+// endregion
