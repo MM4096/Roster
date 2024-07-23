@@ -11,9 +11,9 @@ const CUSTOM_GENERATION_INFO = [
     },
     {
         "name": "lunchFirst",
-        "displayName": "Lunch First (WIP)",
+        "displayName": "Lunch First",
         "scriptPath": "alt_generation_scripts/lunchFirst.js",
-        "description": "Based on: [default]\nThis script assigns lunch blocks first, then goes from top to bottom.\nThis fixes the problem with [default], of occasionally not assigning lunches.",
+        "description": "Based on: [default]\nThis script assigns lunch blocks first, then goes from top to bottom.\nThis fixes the problem with [default], of occasionally not assigning lunches.\nPriorities:\n\t1. Lunches\n\t2. Compulsory roles\n\t3. Optional roles\n\t4. Free time",
     }
 ];
 
