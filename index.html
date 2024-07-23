@@ -20,11 +20,27 @@
 
             <br><br>
 
+            <label for="chooseGenerationScript">Select a generation script</label>
+            <select id="chooseGenerationScript">
+                <option value="default" selected="selected">Default</option>
+                <option value="lunchFirst">Lunch First</option>
+            </select>
+            <label>
+                <br>
+                <textarea disabled="disabled" id="scriptSelectionInformation" cols="50" rows="5">Generates roster top-down (DEFAULT)</textarea>
+            </label>
+
+            <br>
+
             <button id="clearSettings">Clear</button>
 
             <br>
 
             <button id="loadSettings">Load</button>
+
+            <br>
+
+            <button id="instantGeneration">Generate roster (skip setup steps, requires prior settings)</button>
 
             <br>
 
@@ -112,8 +128,9 @@
 
         <div id="fifthPage" hidden="hidden">
             <p>Modify table</p>
-            <button id="finish">Finish</button>
+            <button id="regenerate">Re-generate Roster</button>
             <button id="downloadPDF">Download as PDF</button>
+            <button id="copyCSV">Copy to clipboard</button>
             <button id="downloadCSV">Download as CSV</button>
 
             <br>

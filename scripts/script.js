@@ -2,6 +2,24 @@ let times = [];
 let people = [];
 let roles = [];
 let tableData = [];
+const CUSTOM_GENERATION_INFO = [
+    {
+        "name": "default",
+        "displayName": "Original (Default)",
+        "scriptPath": "scripts/roster.js",
+        "description": "This script generates from the top-down. It doesn't assign tasks to already busy people. However, it may give very late lunches. To remedy this, try the [Lunch First] script.",
+    },
+    {
+        "name": "lunchFirst",
+        "displayName": "Lunch First",
+        "scriptPath": "alt_generation_scripts/lunchFirst.js",
+        "description": "Based on: [default]\nThis script assigns lunch blocks first, then goes from top to bottom.\nThis fixes the problem with [default], of occasionally not assigning lunches.\nPriorities:\n\t1. Lunches\n\t2. Compulsory roles\n\t3. Optional roles\n\t4. Free time",
+    }
+];
+
+$(document).ready(function() {
+    UpdateGenerationScripts();
+})
 
 function MakeTableData() {
     let tableData = [];
@@ -36,15 +54,17 @@ function DrawTable(tableData, useInputs = false, id = "table", createID = true) 
     for (let i = 0; i < tableData.length; i++) {
         table += "<tr>";
         table += `<td>${ConvertToTime(times[i])}</td>`;
+
         for (let j = 0; j < tableData[i].length; j++) {
+            let this_value = tableData[i][j] === "" ? " " : tableData[i][j];
             if (useInputs) {
-                table += `<td id="${i},${j}"><input value=" ${tableData[i][j]}"></td>`;
+                table += `<td id="${i},${j}"><input value="${this_value}"></td>`;
             }
             else if (!createID) {
-                table += `<td>${tableData[i][j]}</td>`;
+                table += `<td>${this_value}</td>`;
             }
             else {
-                table += `<td id="${i},${j}">${tableData[i][j]}</td>`;
+                table += `<td id="${i},${j}">${this_value}</td>`;
             }
         }
         table += "</tr>";
@@ -167,7 +187,7 @@ $("#loadSettingsFile").on("input", function() {
     reader.readAsText(file);
 });
 
-$("#loadSettings").on("click", function() {
+$("#loadSettings").on("click", function () {
 
     try {
         // TODO: Load settings functions
@@ -190,9 +210,14 @@ $("#loadSettings").on("click", function() {
                 toBeAllocated: parseInt(role.maxPeople),
             });
         });
-    }
-    catch (err) {
+    } catch (err) {
         alert(`Invalid settings loaded!\nPlease check your settings and try again.\n\nError: ${err}`);
+        return;
+    }
+
+    let result = LoadGenerationScript();
+
+    if (!result) {
         return;
     }
 
@@ -203,6 +228,28 @@ $("#loadSettings").on("click", function() {
     $("#firstPage").show();
 });
 
+function LoadGenerationScript() {
+    let info = GetCurrentlySelectedGenerationScript();
+    if (info === undefined) {
+        alert("No generation script selected!");
+        return false;
+    }
+    console.log("Loading generation script...");
+    const scriptElement = document.createElement('script');
+    scriptElement.type = 'text/javascript';
+    scriptElement.src = info.scriptPath;
+    $("body").append(scriptElement);
+    return true;
+}
+
+$("#instantGeneration").on("click", function () {
+    $("#loadSettings").click()
+    $("#updateTimes").click();
+    $("#updatedPeople").click();
+    $("#roles").click();
+    $("#generate").click();
+})
+
 $("#clearSettings").on("click", function() {
     if ($("#settings").val() === "") { return;}
     let result = confirm("Are you sure you want to clear all settings?");
@@ -211,6 +258,9 @@ $("#clearSettings").on("click", function() {
 });
 
 $("#toFirstPage").on("click", function() {
+    if (!LoadGenerationScript()) {
+        return;
+    }
     $("#loadData").hide();
     $("#firstPage").show();
 });
@@ -284,137 +334,9 @@ $("#addRole").on("click", function() {
 });
 
 $("#generate").on("click", function() {
-    // region generation
-
-
-    // initialize tableData
-    times.forEach((time, index) => {
-        let row = [];
-        people.forEach((person, personIndex) => {
-            row.push("");
-        });
-        tableData.push(row);
-    })
-
-    let data = GetBusyPeople();
-    let notLunched = people.slice();
-
-    times.forEach((time, index) => {
-        // every time slot
-        let peopleAvailable = [];
-        people.forEach((person, personIndex) => {
-            if (!data[index][personIndex]) {
-                peopleAvailable.push(person);
-            }
-            else {
-                tableData[index][personIndex] = $("#busyInput").val();
-            }
-        });
-
-        let lunchPeriod = 660 < times[index] && times[index] < 840;
-        let notLunched = [];
-        // search for lunch
-        peopleAvailable.forEach((person) => {
-            let personIndex = people.indexOf(person);
-            let lunched = false;
-            for (let i = 0; i < tableData.length; i++) {
-                if (tableData[i][personIndex] === "Lunch") {
-                    lunched = true;
-                }
-            }
-            if (!lunched) {
-                notLunched.push(person);
-            }
-        })
-
-        let mandatoryRoles = GetMandatoryRoles();
-        if (lunchPeriod) {
-            mandatoryRoles.push({role: "Lunch"});
-        }
-        let worthIt = true;
-        // cycle through mandatory roles
-        while (mandatoryRoles.length > 0 && peopleAvailable.length > 0) {
-            let role = mandatoryRoles.shift();
-            let weights = [];
-
-            peopleAvailable.forEach(person => {
-                let weight = 10;
-                let personIndex = people.indexOf(person);
-                let personRoles = [];
-                // get all roles of this person
-                for (let i = 0; i < tableData.length; i++) {
-                    personRoles.push(tableData[i][personIndex]);
-                }
-
-                // decrease weight if person has already done role
-                if (personRoles.includes(role.role)) {
-                    weight -= 3;
-                }
-                // decrease weight if person has already done role in the last block
-                if (index > 0 && tableData[index - 1][personIndex] === role.role) {
-                    weight -= 5;
-                }
-                if (lunchPeriod && notLunched.includes(person)) {
-                    weight -= 2;
-                }
-
-                weights.push(weight);
-            })
-
-            let worthIt = true;
-            let totalWeight = weights.reduce((a, b) => a + b, 0);
-            let random = Math.floor(Math.random() * totalWeight);
-            let average = totalWeight / weights.length;
-            if (average < 5) {
-                worthIt = false
-            }
-            else {
-                let personIndex = 0;
-                let currentWeight = 0;
-                for (let i = 0; i < weights.length; i++) {
-                    currentWeight += weights[i];
-                    if (currentWeight > random) {
-                        personIndex = i;
-                        break;
-                    }
-                }
-
-                let person = peopleAvailable[personIndex];
-                peopleAvailable.splice(personIndex, 1);
-                tableData[index][people.indexOf(person)] = role.role;
-                role.toBeAllocated--;
-            }
-            if (role.toBeAllocated > 0 && worthIt) mandatoryRoles.push(role);
-        }
-
-        if (peopleAvailable.length > 0 && lunchPeriod) {
-            let availableAndNotLunched = peopleAvailable.filter(person => notLunched.includes(person));
-            availableAndNotLunched.forEach(person => {
-                tableData[index][people.indexOf(person)] = "Lunch";
-            })
-        }
-
-        let optionalRoles = GetOptionalRoles();
-        // cycle through optional roles
-        while (optionalRoles.length > 0 && peopleAvailable.length > 0) {
-            let role = optionalRoles.shift();
-            // select random person
-            let personIndex = Math.floor(Math.random() * peopleAvailable.length);
-            let person = peopleAvailable[personIndex];
-            // remove person from list
-            peopleAvailable.splice(personIndex, 1);
-            // add to role
-            tableData[index][people.indexOf(person)] = role.role;
-            // tableData.
-            role.toBeAllocated--;
-            if (role.toBeAllocated > 0) optionalRoles.push(role);
-        }
-
-
-
-    });
-
-    // endregion
+    console.groupCollapsed("Roster Generation")
+    GenerateRoster();
+    console.groupEnd();
 
     DrawTable(tableData, true);
     $("#fourthPage").hide();
@@ -434,3 +356,75 @@ $("#saveSettings").on("click", function() {
 $("#closeSettings").on("click", function() {
     $("#settingsPopup").hide();
 });
+
+$("#regenerate").on("click", function() {
+    tableData = []
+    console.groupCollapsed("Roster Regeneration")
+    GenerateRoster();
+    console.groupEnd();
+
+    $("#table").html("<>");
+    DrawTable(tableData, true);
+    $("#settingsPopup").show();
+});
+
+$("#chooseGenerationScript").change(function () {
+    let info = GetCurrentlySelectedGenerationScript()
+    let textarea = $("#scriptSelectionInformation");
+    if (info === undefined) {
+        textarea.val("No script selected");
+        return;
+    }
+    textarea.val(info.description);
+})
+
+function UpdateGenerationScripts() {
+    let select = $("#chooseGenerationScript");
+    select.html("");
+    CUSTOM_GENERATION_INFO.forEach(script => {
+        select.append(`<option value="${script.name}">${script.displayName}</option>`);
+    });
+    select.children("option").first().attr("selected", "selected");
+    select.change();
+}
+
+function GetCurrentlySelectedGenerationScript() {
+    return GetGenerationScriptInfo($("#chooseGenerationScript").children("option").filter(":selected").attr("value"));
+}
+
+function GetGenerationScriptInfo(script) {
+    return CUSTOM_GENERATION_INFO.find(x => x.name === script);
+}
+
+// region Global functions
+
+/**
+ * Returns a random integer between min (inclusive) and max (inclusive)
+ */
+function GetRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Shuffles an array
+ */
+function ShuffleArray(array) {
+    let _currentIndex = array.length;
+
+    // While there remain elements to shuffle...
+    while (_currentIndex !== 0) {
+
+        // Pick a remaining element...
+        let randomIndex = Math.floor(Math.random() * _currentIndex);
+        _currentIndex--;
+
+        // And swap it with the current element.
+        [array[_currentIndex], array[randomIndex]] = [
+            array[randomIndex], array[_currentIndex]];
+    }
+    return array;
+}
+
+// endregion

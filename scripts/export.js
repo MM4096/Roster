@@ -1,4 +1,4 @@
-function download_table_as_csv(table_id, separator = ',') {
+function get_table_as_csv(table_id, separator = ',') {
     // Select rows from table_id
     let rows = document.querySelectorAll('table#' + table_id + ' tr');
     // Construct csv
@@ -15,7 +15,11 @@ function download_table_as_csv(table_id, separator = ',') {
         }
         csv.push(row.join(separator));
     }
-    let csv_string = csv.join('\n');
+    return csv.join('\n');
+}
+
+function download_table_as_csv(table_id, separator = ',') {
+    let csv_string = get_table_as_csv(table_id, separator);
     // Download it
     let filename = 'export_' + table_id + '_' + new Date().toLocaleDateString() + '.csv';
     let link = document.createElement('a');
@@ -26,6 +30,10 @@ function download_table_as_csv(table_id, separator = ',') {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+function copy_table_to_clipboard(table_id) {
+    navigator.clipboard.writeText(get_table_as_csv(table_id, '\t'));
 }
 
 function GetNewTableData() {
@@ -99,4 +107,9 @@ $("#downloadPDF").on("click", function() {
     printWindow.print();
     printWindow.document.close();
     $("#saveTable").hide();
+})
+
+$("#copyTable").on("click", function() {
+    DrawTable(GetNewTableData(), false, "saveTable", false);
+    copy_table_to_clipboard('saveTable');
 })
